@@ -169,12 +169,15 @@ g = 9.81                 # gravity
 
 # inertial properties
 mass_body = 13.5
-i_xx = 0.0178533
+# i_xx = 0.0178533
 i_xy = 0.0
 i_xz = 0.0
 i_yz = 0.0
-i_yy = 0.0377999
-i_zz = 0.0456542
+# i_yy = 0.0377999
+# i_zz = 0.0456542
+i_xx = 0.116 
+i_yy = 0.349
+i_zz = 0.399
 inertia_body = Array(Diagonal([i_xx, i_yy, i_zz]))
 mass_foot = 0.2
 

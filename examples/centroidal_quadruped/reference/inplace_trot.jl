@@ -25,10 +25,10 @@ dt = DTO.Dynamics((y, x, u, w) -> centroidal_quadruped_dynt(model, env, [h], y, 
 dyn = [d1, [dt for t = 2:T-1]...]
 
 # ## initial conditions
-mode = :left
+mode = :right
 body_height = 0.3
 foot_x = 0.17
-foot_y = 0.15
+foot_y = 0.1308
 foot_height = 0.08
 
 q1 = zeros(model.nq)
@@ -331,7 +331,7 @@ b_opt = [u[model.nu + 4 .+ (1:16)] for u in u_sol]
 η_opt = [u[model.nu + 4 + 16 + 4 .+ (1:16)] for u in u_sol]
 
 if mode == :right
-    qr = q_opt
+    q_r = q_opt
     vr = v_opt
     ur = u_opt
     γr = γ_opt
@@ -340,8 +340,8 @@ if mode == :right
     ηr = η_opt
 
     using JLD2
-    @save joinpath(@__DIR__, "inplace_trot_right.jld2") qr ur γr br ψr ηr
-    @load joinpath(@__DIR__, "inplace_trot_right.jld2") qr ur γr br ψr ηr
+    @save joinpath(@__DIR__, "inplace_trot_right.jld2") q_r ur γr br ψr ηr
+    @load joinpath(@__DIR__, "inplace_trot_right.jld2") q_r ur γr br ψr ηr
 end
 
 if mode == :left
@@ -374,7 +374,7 @@ end
 
 @load joinpath(@__DIR__, "inplace_trot_left.jld2") ql ul γl bl ψl ηl
 
-qm = [qr[2:end]..., ql[2:end]...]
+qm = [q_r[2:end]..., ql[2:end]...]
 um = [ur..., ul...]
 γm = [γr..., γl...]
 bm = [br..., bl...]
@@ -391,5 +391,5 @@ plot(timesteps, hcat(ψm...)', labels="")
 plot(timesteps, hcat(ηm...)', labels="")
 
 using JLD2
-@save joinpath(@__DIR__, "inplace_trot.jld2") qm um γm bm ψm ηm μm hm
-@load joinpath(@__DIR__, "inplace_trot.jld2") qm um γm bm ψm ηm μm hm
+@save joinpath(@__DIR__, "inplace_trot_v5.jld2") qm um γm bm ψm ηm μm hm
+@load joinpath(@__DIR__, "inplace_trot_v5.jld2") qm um γm bm ψm ηm μm hm

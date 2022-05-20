@@ -24,7 +24,8 @@ env = s.env
 
 # ## Reference Trajectory
 ref_traj = deepcopy(get_trajectory(s.model, s.env,
-	joinpath(module_dir(), "src/dynamics/centroidal_quadruped/gaits/inplace_trot_v4.jld2"),
+	joinpath(module_dir(), "examples/centroidal_quadruped/reference/inplace_trot_v5.jld2"), 
+	# joinpath(module_dir(), "src/dynamics/centroidal_quadruped/gaits/inplace_trot_v4.jld2"),
     # joinpath(module_dir(), "src/dynamics/centroidal_quadruped/gaits/stand_euler_v0.jld2"),
     load_type = :split_traj_alt));
 
