@@ -25,7 +25,8 @@ env = s.env
 # ## Reference Trajectory
 ref_traj = deepcopy(get_trajectory(s.model, s.env,
 	# joinpath(module_dir(), "src/dynamics/centroidal_quadruped/gaits/inplace_trot_v4.jld2"),
-    joinpath(module_dir(), "src/dynamics/centroidal_quadruped/gaits/stand_v0.jld2"),
+    # joinpath(module_dir(), "src/dynamics/centroidal_quadruped/gaits/stand_v0.jld2"),
+	joinpath(@__DIR__, "reference/stand.jld2"),
     load_type = :split_traj_alt));
 (model.mass_body + 0.8)* 9.81 / 4
 
@@ -77,16 +78,13 @@ d = open_loop_disturbances(w, N_sample)
 q1_sim, v1_sim = initial_conditions(ref_traj);
 
 # ## Simulator
-sim = simulator(s, H_sim, h=h_sim, policy=p)#, dist=d);
+sim = simulator(s, H_sim, h=h_sim, policy=p, dist=d);
 
 
 using BenchmarkTools
 # ## Simulate
 q1_sim0 = deepcopy(q1_sim)
 RoboDojo.simulate!(sim, q1_sim0, v1_sim)
-
-ref_traj.q[end][3]
-sim.traj.q[end][3]
 
 # ## Visualize
 set_light!(vis)

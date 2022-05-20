@@ -1,8 +1,8 @@
 # ## model
 include("trajopt_model.jl")
 
-vis = Visualizer()
-open(vis)
+# vis = Visualizer()
+# open(vis)
 
 # ## horizon
 T = 101
@@ -32,7 +32,7 @@ foot_x = 0.17
 foot_y = 0.15
 function nominal_configuration(model::CentroidalQuadruped)
     [
-        0.0; 0.0; body_height;
+        -0.025; -0.025; body_height;
         0.0; 0.0; 0.0;
         foot_x; foot_y; 0.0;
         foot_x;-foot_y; 0.0;
@@ -123,6 +123,7 @@ function constraints_t(x, u, w)
      contact_constraints_equality(model, env, h, x, u, w);
      # inequality (32)
      contact_constraints_inequality_t(model, env, h, x, u, w);
+     (x[1:3] .- q1[1:3]); 
      (x[18 .+ (10:18)] - q1[10:18]);
     ]
 end
@@ -133,6 +134,7 @@ function constraints_M(x, u, w)
      contact_constraints_equality(model, env, h, x, u, w);
      # inequality (32)
      contact_constraints_inequality_t(model, env, h, x, u, w);
+     (x[1:3] .- q1[1:3]); 
      x[9] - 0.1;
      (x[18 .+ (10:18)] - q1[10:18]);
     ]
@@ -142,6 +144,7 @@ function constraints_T(x, u, w)
     [
      # inequality (8)
      contact_constraints_inequality_T(model, env, h, x, u, w);
+     (x[1:3] .- q1[1:3]); 
      (x[18 .+ (10:18)] - q1[10:18]);
     ]
 end
@@ -216,14 +219,14 @@ bm = b_opt
 μm = model.μ_world
 hm = h
 timesteps = range(0.0, stop=(h * (length(qm) - 2)), length=(length(qm) - 2))
-plot(timesteps, hcat(qm[2:end-1]...)', labels="")
-plot(timesteps, hcat(um...)', labels="")
-plot(timesteps, hcat(γm...)', labels="")
-plot(timesteps, hcat(bm...)', labels="")
-plot(timesteps, hcat(ψm...)', labels="")
-plot(timesteps, hcat(ηm...)', labels="")
+# plot(timesteps, hcat(qm[2:end-1]...)', labels="")
+# plot(timesteps, hcat(um...)', labels="")
+# plot(timesteps, hcat(γm...)', labels="")
+# plot(timesteps, hcat(bm...)', labels="")
+# plot(timesteps, hcat(ψm...)', labels="")
+# plot(timesteps, hcat(ηm...)', labels="")
 
-visualize!(vis, model, qm, Δt=h);
+# visualize!(vis, model, qm, Δt=h);
 
 using JLD2
 @save joinpath(@__DIR__, "one_foot_up.jld2") qm um γm bm ψm ηm μm hm
