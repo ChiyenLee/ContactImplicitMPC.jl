@@ -24,10 +24,9 @@ env = s.env
 
 # ## Reference Trajectory
 ref_traj = deepcopy(get_trajectory(s.model, s.env,
-	# joinpath(module_dir(), "src/dynamics/centroidal_quadruped/gaits/inplace_trot_v4.jld2"),
-    joinpath(module_dir(), "src/dynamics/centroidal_quadruped/gaits/stand_v0.jld2"),
+	joinpath(@__DIR__, "reference/one_foot_up.jld2"),
     load_type = :split_traj_alt));
-(model.mass_body + 0.8)* 9.81 / 4
+
 
 H = ref_traj.H
 h = ref_traj.h
@@ -36,7 +35,7 @@ h = ref_traj.h
 N_sample = 5
 H_mpc = 10
 h_sim = h / N_sample
-H_sim = 320
+H_sim = 5000
 κ_mpc = 2.0e-4
 
 v0 = 0.0
@@ -60,7 +59,7 @@ p = ci_mpc_policy(ref_traj, s, obj,
 					max_time = 1e5),
     n_opts = NewtonOptions(
         r_tol = 3e-5,
-        max_time=1.0e-1,
+        max_time=10.0e-1,
 		solver=:ldl_solver,
         threads=false,
         verbose=false,
@@ -77,16 +76,13 @@ d = open_loop_disturbances(w, N_sample)
 q1_sim, v1_sim = initial_conditions(ref_traj);
 
 # ## Simulator
-sim = simulator(s, H_sim, h=h_sim, policy=p)#, dist=d);
+sim = simulator(s, H_sim, h=h_sim, policy=p, dist=d);
 
 
 using BenchmarkTools
 # ## Simulate
 q1_sim0 = deepcopy(q1_sim)
 RoboDojo.simulate!(sim, q1_sim0, v1_sim)
-
-ref_traj.q[end][3]
-sim.traj.q[end][3]
 
 # ## Visualize
 set_light!(vis)
@@ -102,9 +98,10 @@ plot(sim.stats.policy_time, xlabel="timestep", ylabel="mpc time (s)",
 	ylims=[-0.001, 0.03],
 	label="", linetype=:steppost)
 
-[u for u in sim.traj.u]
-plot([q[3] for q in sim.traj.q])
 
 
-convert_frames_to_video_and_gif("centroidal_quadruped_push_recovery_force")
-convert_video_to_gif("/home/simon/Downloads/centroidal_quadruped_push_recovery_force.mp4")
+t = 1.115
+h = 0.01
+
+t % h
+t - t % h

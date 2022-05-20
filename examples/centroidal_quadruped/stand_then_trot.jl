@@ -7,6 +7,7 @@
 using ContactImplicitMPC
 using LinearAlgebra
 using Quaternions
+using BenchmarkTools
 
 # ## Visualizer
 vis = ContactImplicitMPC.Visualizer()
@@ -24,10 +25,12 @@ env = s.env
 
 # ## Reference Trajectory
 ref_traj = deepcopy(get_trajectory(s.model, s.env,
-	# joinpath(module_dir(), "src/dynamics/centroidal_quadruped/gaits/inplace_trot_v4.jld2"),
-    joinpath(module_dir(), "src/dynamics/centroidal_quadruped/gaits/stand_v0.jld2"),
+	joinpath(module_dir(), "src/dynamics/centroidal_quadruped/gaits/inplace_trot_v4.jld2"),
     load_type = :split_traj_alt));
-(model.mass_body + 0.8)* 9.81 / 4
+ref_standing_traj = deepcopy(get_trajectory(s.model, s.env,
+    joinpath(module_dir(), "src/dynamics/centroidal_quadruped/gaits/stand_euler_v0.jld2"),
+    load_type = :split_traj_alt));
+
 
 H = ref_traj.H
 h = ref_traj.h
@@ -36,10 +39,10 @@ h = ref_traj.h
 N_sample = 5
 H_mpc = 10
 h_sim = h / N_sample
-H_sim = 320
+H_sim = 1000
 κ_mpc = 2.0e-4
 
-v0 = 0.0
+v0 = 0.2
 obj = TrackingVelocityObjective(model, env, H_mpc,
     v = [Diagonal(1e-3 * [[1,1,1]; 1e+3*[1,1,1]; fill([1,1,1], 4)...]) for t = 1:H_mpc],
 	q = [relative_state_cost(1e-0*[1e-2,1e-2,1], 3e-1*[1,1,1], 1e-0*[0.2,0.2,1]) for t = 1:H_mpc],
@@ -74,19 +77,19 @@ w = [[0.0,0.0,0.0] for i=1:H_sim/N_sample]
 d = open_loop_disturbances(w, N_sample)
 
 # ## Initial conditions
-q1_sim, v1_sim = initial_conditions(ref_traj);
+# q1_sim, v1_sim = initial_conditions(ref_traj);
+# set_robot!(vis, model, q1_sim)
+q1_sim, v1_sim = initial_conditions(ref_standing_traj);
+set_robot!(vis, model, q1_sim)
+
 
 # ## Simulator
-sim = simulator(s, H_sim, h=h_sim, policy=p)#, dist=d);
+sim = simulator(s, H_sim, h=h_sim, policy=p, dist=d);
 
 
-using BenchmarkTools
 # ## Simulate
 q1_sim0 = deepcopy(q1_sim)
 RoboDojo.simulate!(sim, q1_sim0, v1_sim)
-
-ref_traj.q[end][3]
-sim.traj.q[end][3]
 
 # ## Visualize
 set_light!(vis)
@@ -99,12 +102,16 @@ anim = visualize!(vis, model, sim.traj.q; Δt=h_sim)
 process!(sim.stats, N_sample) # Time budget
 H_sim * h_sim / sum(sim.stats.policy_time) # Speed ratio
 plot(sim.stats.policy_time, xlabel="timestep", ylabel="mpc time (s)",
-	ylims=[-0.001, 0.03],
+	ylims=[-0.001, 0.15],
 	label="", linetype=:steppost)
 
-[u for u in sim.traj.u]
-plot([q[3] for q in sim.traj.q])
+sim
+sim.traj
 
-
-convert_frames_to_video_and_gif("centroidal_quadruped_push_recovery_force")
-convert_video_to_gif("/home/simon/Downloads/centroidal_quadruped_push_recovery_force.mp4")
+plt = plot()
+plot!(plt, hcat(Vector.([(sim.traj.q[i+1][1:1] - sim.traj.q[i][1:1]) / sim.h for i=1:H_sim])...)')
+plot!(plt, hcat(Vector.([(sim.traj.q[i+1][7:7] - sim.traj.q[i][7:7]) / sim.h for i=1:H_sim])...)')
+plot!(plt, hcat(Vector.([(sim.traj.q[i+1][10:10] - sim.traj.q[i][10:10]) / sim.h for i=1:H_sim])...)')
+plot!(plt, hcat(Vector.([(sim.traj.q[i+1][13:13] - sim.traj.q[i][13:13]) / sim.h for i=1:H_sim])...)')
+plot!(plt, hcat(Vector.([(sim.traj.q[i+1][16:16] - sim.traj.q[i][16:16]) / sim.h for i=1:H_sim])...)')
+sim.stats.policy_time

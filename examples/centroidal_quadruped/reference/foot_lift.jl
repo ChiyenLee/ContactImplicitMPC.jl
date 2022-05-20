@@ -5,8 +5,8 @@ vis = Visualizer()
 open(vis)
 
 # ## horizon
-T = 11
-h = 0.1
+T = 21
+h = 0.01
 
 # ## centroidal_quadruped
 s = get_simulation("centroidal_quadruped", "flat_3D_lc", "flat")
@@ -28,7 +28,7 @@ dyn = [d1, [dt for t = 2:T-1]...]
 # ## initial conditions
 body_height = 0.3
 foot_x = 0.17
-foot_y = 0.1308
+foot_y = 0.15
 function nominal_configuration(model::CentroidalQuadruped)
     [
         0.0; 0.0; body_height;
@@ -45,37 +45,46 @@ qT = nominal_configuration(model)
 q_ref = nominal_configuration(model)
 
 x1 = [q1; q1]
-xM = [qM; qM]
 xT = [qT; qT]
-x_ref = [q_ref; q_ref]
+x_ref = [x1]
+q_prev = nominal_configuration(model)
+for i = 2:T-1
+	ϕ = (i-2) / (T-3)
+	amplitude = 0.1
+	altitude = amplitude * (1 - cos(2π * ϕ))
+	q = nominal_configuration(model)
+	q[7] += altitude
+	push!(x_ref, [q_prev; q])
+	q = q_prev
+end
+push!(x_ref, xT)
+plot(hcat(x_ref...)'[:,model.nq .+ (7:7)])
+visualize!(vis, model, x_ref, Δt=h);
+
+
 
 # ## objective
-function obj1(x, u, w)
-	J = 0.0
-	J += 0.5 * transpose(x[1:nx] - x_ref) * Diagonal(ones(nx)) * (x[1:nx] - x_ref)
-	J += 0.5 * transpose(u) * Diagonal([ones(model.nu); zeros(nu - model.nu)]) * u
-    J += 1000.0 * u[end] # slack
-	return J
-end
-
-function objt(x, u, w)
-	J = 0.0
-	J += 0.5 * transpose(x[1:nx] - x_ref) * Diagonal(ones(nx)) * (x[1:nx] - x_ref)
-	J += 0.5 * transpose(u) * Diagonal([ones(model.nu); zeros(nu - model.nu)]) * u
-    J += 1000.0 * u[end] # slack
-	return J
+obj = Vector{Cost{Float64}}()
+for i = 1:T-1
+	function objt(x, u, w)
+		J = 0.0
+		J += 0.5 * transpose(x[1:nx] - x_ref[i]) * Diagonal(ones(nx)) * (x[1:nx] - x_ref[i])
+		J += 0.5 * transpose(u) * Diagonal([ones(model.nu); zeros(nu - model.nu)]) * u
+	    J += 1000.0 * u[end] # slack
+		return J
+	end
+	ct = DTO.Cost(objt, nx + nθ + nx + model.nu, nu)
+	push!(obj, ct)
 end
 
 function objT(x, u, w)
 	J = 0.0
-	J += 0.5 * transpose(x[1:nx] - x_ref) * Diagonal(ones(nx)) * (x[1:nx] - x_ref)
+	J += 0.5 * transpose(x[1:nx] - x_ref[T]) * Diagonal(ones(nx)) * (x[1:nx] - x_ref[T])
     return J
 end
-
-c1 = DTO.Cost(obj1, nx, nu)
-ct = DTO.Cost(objt, nx + nθ + nx + model.nu, nu)
 cT = DTO.Cost(objT, nx + nθ + nx + model.nu, 0)
-obj = [c1, [ct for t = 2:T-1]..., cT];
+push!(obj, cT)
+
 
 # ## constraints
 ql = q1
@@ -149,7 +158,7 @@ DTO.initialize_controls!(p, u_guess)
 x_sol, u_sol = DTO.get_trajectory(p)
 @show x_sol[1]
 @show x_sol[T]
-maximum([u[nu] for u in u_sol[1:end-1]])
+sum([u[nu] for u in u_sol[1:end-1]])
 
 # ## visualize
 # q_sol = state_to_configuration([x[1:nx] for x in x_sol])
