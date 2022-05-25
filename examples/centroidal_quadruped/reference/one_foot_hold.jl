@@ -1,8 +1,8 @@
 # ## model
 include("trajopt_model.jl")
 
-vis = Visualizer()
-open(vis)
+# vis = Visualizer()
+# open(vis)
 
 # ## horizon
 T = 11
@@ -139,7 +139,7 @@ p = DTO.solver(dyn, obj, cons, bnds,
 
 # ## initialize
 x_interpolation = [x1, [[x1; zeros(nθ); zeros(nx); zeros(model.nu)] for t = 2:T]...]
-u_guess = [1.0e-4 * rand(nu) for t = 1:T-1] # may need to run more than once to get good trajectory
+# u_guess = [1.0e-4 * rand(nu) for t = 1:T-1] # may need to run more than once to get good trajectory
 DTO.initialize_states!(p, x_interpolation)
 DTO.initialize_controls!(p, u_guess)
 

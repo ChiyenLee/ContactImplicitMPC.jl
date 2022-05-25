@@ -24,21 +24,23 @@ env = s.env
 
 # ## Reference Trajectory
 ref_traj = deepcopy(get_trajectory(s.model, s.env,
-	# joinpath(@__DIR__, "reference/one_foot_up_heavy_feet.jld2"),
-	joinpath(@__DIR__, "reference/one_foot_up.jld2"),
+	# joinpath(@__DIR__, "reference/stand_heavy_feet.jld2"),
+	# joinpath(@__DIR__, "reference/one_foot_up.jld2"),
+	joinpath(@__DIR__, "reference/inplace_trot_v6.jld2"), 	
     load_type = :split_traj_alt));
 
 
 H = ref_traj.H
 h = ref_traj.h
 
-# ## MPC setup
-N_sample = 5
-H_mpc = 10
+## MPC setup
+N_sample = 1
+H_mpc = 7
 h_sim = h / N_sample
 H_sim = 1000
 
-κ_mpc = 2.0e-4
+# κ_mpc = 2.0e-4
+κ_mpc = 1.0e-5
 
 v0 = 0.0
 obj = TrackingVelocityObjective(model, env, H_mpc,
@@ -61,7 +63,7 @@ p = ci_mpc_policy(ref_traj, s, obj,
 					max_time = 1e5),
     n_opts = NewtonOptions(
         r_tol = 3e-5,
-        max_time=10.0e-1,
+        max_time=1.0e-1,
 		solver=:ldl_solver,
         threads=false,
         verbose=false,
@@ -70,6 +72,31 @@ p = ci_mpc_policy(ref_traj, s, obj,
 		# live_plotting=true
 		));
 
+q1_sim, v1_sim = initial_conditions(ref_traj);
+q1_sim0 = deepcopy(q1_sim)
+# v1_sim = randn(18) * 0.01 
+q1_sim0[1] = 0.0
+q1_sim0[4] = 0.0
+q1_sim0[5] = 0.0
+q1_sim0[6] = 0.0
+q1_sim0[7] += 0.01
+q1_sim0[8] += 0.01
+q1_sim0[10] -= 0.01
+q1_sim0[11] -= 0.01
+q1_sim0[13] += 0.05
+q1_sim0[14] -= 0.02 
+q1_sim0[16] -= 0.01
+q1_sim0[17] += 0.02
+q1_sim0[9] = 0.002
+q1_sim0[12] = 0.002
+q1_sim0[15] = 0.005
+q1_sim0[18] = 0.004
+
+x = [q1_sim0; v1_sim; zeros(4)]
+exec_policy(p, x, 0.0)
+exec_policy(p, x, 0.02)
+
+## 
 # ## Disturbances
 w = [[0.0,0.0,0.0] for i=1:H_sim/N_sample]
 d = open_loop_disturbances(w, N_sample)
@@ -85,6 +112,7 @@ using BenchmarkTools
 # ## Simulate
 q1_sim0 = deepcopy(q1_sim)
 # RoboDojo.simulate!(sim, q1_sim0, v1_sim)
+v1_sim = randn(18) * 0.01 
 q1_sim0[1] = 0.0
 q1_sim0[4] = 0.0
 q1_sim0[5] = 0.0
@@ -97,7 +125,15 @@ q1_sim0[13] += 0.05
 q1_sim0[14] -= 0.02 
 q1_sim0[16] -= 0.01
 q1_sim0[17] += 0.02
-q1_sim0[9] = 0
+q1_sim0[9] = 0.002
+q1_sim0[12] = 0.002
+q1_sim0[15] = 0.005
+q1_sim0[18] = 0.004
+
+x = [q1_sim0; v1_sim]
+# exec_policy(p, x, 0.0)
+
+
 RoboDojo.set_state!(sim, q1_sim0, v1_sim, 1)
 simulate!(sim,clock_time_noise=1.0e-3)
 
@@ -107,7 +143,7 @@ set_floor!(vis, grid=true)
 set_background!(vis)
 anim = visualize!(vis, model, sim.traj.q; Δt=h_sim)
 
-# # ## Timing result
+## Timing result
 # # Julia is [JIT-ed](https://en.wikipedia.org/wiki/Just-in-time_compilation) so re-run the MPC setup through Simulate for correct timing results.
 process!(sim.stats, N_sample) # Time budget
 H_sim * h_sim / sum(sim.stats.policy_time) # Speed ratio

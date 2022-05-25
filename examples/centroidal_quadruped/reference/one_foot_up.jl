@@ -5,9 +5,9 @@ include("trajopt_model.jl")
 # open(vis)
 
 # ## horizon
-T = 101
-Tm = 51
-h = 0.01
+T = 21
+Tm = 11
+h = 0.05
 
 # ## centroidal_quadruped
 s = get_simulation("centroidal_quadruped", "flat_3D_lc", "flat")
@@ -54,7 +54,9 @@ x_ref = [q_ref; q_ref]
 function obj1(x, u, w)
 	J = 0.0
 	J += 0.5 * transpose(x[1:nx] - x_ref) * Diagonal(ones(nx)) * (x[1:nx] - x_ref)
-	J += 0.5 * transpose(u) * Diagonal([1.0e-2 * ones(model.nu); zeros(nu - model.nu)]) * u
+	# J += 0.5 * transpose(u) * Diagonal([1.0e-2 * ones(model.nu); zeros(nu - model.nu)]) * u 
+    J += 0.5 * transpose(u) * Diagonal([1.0e-2 * ones(model.nu); zeros(4); ones(16); ones(4); ones(17)]) * u 
+
     vf1 = (x[18 .+ (7:9)] - x[7:9]) ./ h 
     J += 1.0 * dot(vf1, vf1)
     J += 1000.0 * u[end] # slack
@@ -64,7 +66,8 @@ end
 function objt(x, u, w)
 	J = 0.0
 	J += 0.5 * transpose(x[1:nx] - x_ref) * Diagonal(ones(nx)) * (x[1:nx] - x_ref)
-	J += 0.5 * transpose(u) * Diagonal([1.0e-2 * ones(model.nu); zeros(nu - model.nu)]) * u
+	# J += 0.5 * transpose(u) * Diagonal([1.0e-2 * ones(model.nu); 1e-2 * ones(nu - model.nu)]) * u 
+    J += 0.5 * transpose(u) * Diagonal([1.0e-2 * ones(model.nu); zeros(4); ones(16); ones(4); ones(17)]) * u 
     vf1 = (x[18 .+ (7:9)] - x[7:9]) ./ h 
     J += 1.0 * dot(vf1, vf1)
     J += 1000.0 * u[end] # slack
@@ -164,16 +167,16 @@ cont = DTO.Constraint(constraints_t, nx + nθ + nx + model.nu, nu, idx_ineq=coll
 conM = DTO.Constraint(constraints_M, nx + nθ + nx + model.nu, nu, idx_ineq=collect(16 .+ (1:32)))
 conTT = DTO.Constraint(constraints_TT, nx + nθ + nx + model.nu, nu, idx_ineq=collect(16 .+ (1:32)))
 conT = DTO.Constraint(constraints_T, nx + nθ + nx + model.nu, nu, idx_ineq=collect(0 .+ (1:8)))
-cons = [con1, [t == Tm ? conM : (t > T - 10 ? conTT : cont) for t = 2:T-1]..., conT];
+cons = [con1, [t == Tm ? conM : (t > T - 2 ? conTT : cont) for t = 2:T-1]..., conT];
 
 # ## problem
 p = DTO.solver(dyn, obj, cons, bnds,
     options=DTO.Options(
-        tol=1.0e-2,
-        constr_viol_tol=1.0e-2,
+        tol=1.0e-5,
+        constr_viol_tol=1.0e-5,
         ))
 
-# ## initialize
+        # ## initialize
 x_interpolation = [x1, [[x1; zeros(nθ); zeros(nx); zeros(model.nu)] for t = 2:T]...]
 u_guess = [1.0e-4 * rand(nu) for t = 1:T-1] # may need to run more than once to get good trajectory
 DTO.initialize_states!(p, x_interpolation)
@@ -219,15 +222,29 @@ bm = b_opt
 μm = model.μ_world
 hm = h
 timesteps = range(0.0, stop=(h * (length(qm) - 2)), length=(length(qm) - 2))
-# plot(timesteps, hcat(qm[2:end-1]...)', labels="")
-# plot(timesteps, hcat(um...)', labels="")
-# plot(timesteps, hcat(γm...)', labels="")
-# plot(timesteps, hcat(bm...)', labels="")
-# plot(timesteps, hcat(ψm...)', labels="")
-# plot(timesteps, hcat(ηm...)', labels="")
+plot(timesteps, hcat(qm[2:end-1]...)', labels="")
+plot(timesteps, hcat(um...)', labels="")
+plot(timesteps, hcat(γm...)', labels="")
+plot(timesteps, hcat(bm...)', labels="")
+plot(timesteps, hcat(ψm...)', labels="")
+plot(timesteps, hcat(ηm...)', labels="")
 
 # visualize!(vis, model, qm, Δt=h);
+
+
+# prolong the stand phase by 2 seconds longer
+# qm = [[q_opt[end] for i in 1:2 ÷ h]; q_opt]
+# vm = [[v_opt[end] for i in 1:2 ÷ h]; v_opt]
+# um = [[u_opt[end] for i in 1:2 ÷ h]; u_opt]
+# γm = [[γ_opt[end] for i in 1:2 ÷ h]; γ_opt]
+# bm = [[b_opt[end] for i in 1:2 ÷ h]; b_opt]
+# ψm = [[ψ_opt[end] for i in 1:2 ÷ h]; ψ_opt]
+# ηm = [[η_opt[end] for i in 1:2 ÷ h]; η_opt] 
+
+
 
 using JLD2
 @save joinpath(@__DIR__, "one_foot_up.jld2") qm um γm bm ψm ηm μm hm
 @load joinpath(@__DIR__, "one_foot_up.jld2") qm um γm bm ψm ηm μm hm
+
+# plot(hcat(x_interpolation[2:end, :]...)')

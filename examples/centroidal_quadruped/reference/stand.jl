@@ -1,12 +1,12 @@
 # ## model
 include("trajopt_model.jl")
 
-vis = Visualizer()
-open(vis)
+# vis = Visualizer()
+# open(vis)
 
 # ## horizon
-T = 11
-h = 0.1
+T = 21
+h = 0.05
 
 # ## centroidal_quadruped
 s = get_simulation("centroidal_quadruped", "flat_3D_lc", "flat")
@@ -132,8 +132,9 @@ cons = [con1, [cont for t = 2:T-1]..., conT];
 # ## problem
 p = DTO.solver(dyn, obj, cons, bnds,
     options=DTO.Options(
-        tol=1.0e-2,
-        constr_viol_tol=1.0e-2,
+        tol=1.0e-5,
+        constr_viol_tol=1.0e-5,
+        max_iter=3000,
         ))
 
 # ## initialize
@@ -190,5 +191,5 @@ plot(timesteps, hcat(ψm...)', labels="")
 plot(timesteps, hcat(ηm...)', labels="")
 
 using JLD2
-@save joinpath(@__DIR__, "stand_heavy_feet.jld2") qm um γm bm ψm ηm μm hm
-@load joinpath(@__DIR__, "stand_heavy_feet.jld2") qm um γm bm ψm ηm μm hm
+@save joinpath(@__DIR__, "stand005.jld2") qm um γm bm ψm ηm μm hm
+@load joinpath(@__DIR__, "stand005.jld2") qm um γm bm ψm ηm μm hm
