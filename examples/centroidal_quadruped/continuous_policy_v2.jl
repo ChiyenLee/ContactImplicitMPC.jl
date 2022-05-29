@@ -50,14 +50,20 @@ function exec_policy(p::CIMPC{T,NQ,NU,NW,NC}, x::Vector{T}, t::T) where {T,NQ,NU
 	end
 
     if t >= p.next_time_update
-		(p.opts.altitude_update && t > 0.0) && (update_altitude!(p.altitude, p.ϕ, p.s,
-									x, NQ, NC, p.N_sample,
-									threshold = p.opts.altitude_impact_threshold,
-									verbose = p.opts.altitude_verbose))
+		# (p.opts.altitude_update && t > 0.0) && (update_altitude!(p.altitude, p.ϕ, p.s,
+		# 							x, NQ, NC, p.N_sample,
+		# 							threshold = p.opts.altitude_impact_threshold,
+		# 							verbose = p.opts.altitude_verbose))
 
-		set_altitude!(p.im_traj, p.altitude)
+		# set_altitude!(p.im_traj, p.altitude)
+		# update!(p.im_traj, p.traj, p.s, p.altitude, p.κ[1], p.traj.H)
+
+		q1 = x[1:NQ]
+		q0 = x[1:NQ] - x[NQ .+ (1:NQ)] .* p.traj.h
+		newton_solve!(p.newton, p.s, q0, q1,
+			p.window, p.im_traj, p.traj, warm_start = t > 0.0)
+
 		update!(p.im_traj, p.traj, p.s, p.altitude, p.κ[1], p.traj.H)
-
 		# visualize
 		# p.opts.live_plotting && live_plotting(p.s.model, p.traj, traj, p.newton, p.q0, traj.q[t+1], t)
 
@@ -71,22 +77,22 @@ function exec_policy(p::CIMPC{T,NQ,NU,NW,NC}, x::Vector{T}, t::T) where {T,NQ,NU
 		p.next_time_update = (t - t % p.traj.h) + p.traj.h
     end
 
-	policy_time = @elapsed begin
-		if p.buffer_time <= 0.0
-			# @show t
-			# optimize
-			q1 = x[1:NQ]
-			q0 = x[1:NQ] - x[NQ .+ (1:NQ)] .* p.traj.h
-			newton_solve!(p.newton, p.s, q0, q1,
-				p.window, p.im_traj, p.traj, warm_start = t > 0.0)
+	# policy_time = @elapsed begin
+	# 	if p.buffer_time <= 0.0
+	# 		# @show t
+	# 		# optimize
+	# 		q1 = x[1:NQ]
+	# 		q0 = x[1:NQ] - x[NQ .+ (1:NQ)] .* p.traj.h
+	# 		newton_solve!(p.newton, p.s, q0, q1,
+	# 			p.window, p.im_traj, p.traj, warm_start = t > 0.0)
 
-			update!(p.im_traj, p.traj, p.s, p.altitude, p.κ[1], p.traj.H)
-		end
-	end
+	# 		update!(p.im_traj, p.traj, p.s, p.altitude, p.κ[1], p.traj.H)
+	# 	end
+	# end
 
-	# update buffer time
-	(p.buffer_time <= 0.0) && (p.buffer_time = policy_time)
-	p.buffer_time -= p.traj.h
+	# # update buffer time
+	# (p.buffer_time <= 0.0) && (p.buffer_time = policy_time)
+	# p.buffer_time -= p.traj.h
 
 	# scale control
 	p.u .= copy(p.newton.traj.u[1])
@@ -94,4 +100,3 @@ function exec_policy(p::CIMPC{T,NQ,NU,NW,NC}, x::Vector{T}, t::T) where {T,NQ,NU
 
 	return copy(p.u)
 end
-rot_n_stride!

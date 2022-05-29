@@ -4,7 +4,7 @@ include("trajopt_model.jl")
 # ## horizon
 
 h = 0.1
-T = 8 
+T = 8
 Tm = 2 # mid point for a swing / stance change 
 
 # ## centroidal_quadruped
@@ -26,7 +26,7 @@ dyn = [d1, [dt for t = 2:T-1]...]
 # ## initial conditions
 body_height = 0.3
 foot_x = 0.17
-foot_y = 0.14
+foot_y = 0.15
 foot_height = 0.08
 
 q1 = zeros(model.nq)
@@ -64,8 +64,8 @@ visualize!(vis, model, [qM2], Δt=h);
 # q_ref = [q1, qM1, qT,  
 #          q1, qM2, qM2, qT]
 
-q_ref = [linear_interpolation(q1, qM1, Tm)..., linear_interpolation(qM1, qT, Tm)..., 
-         linear_interpolation(q1, qM2, Tm)..., linear_interpolation(qM2, qT, Tm)..., qT]
+q_ref = [q1, linear_interpolation(q1, qM1, Tm)..., linear_interpolation(qM1, qT, Tm)..., 
+         linear_interpolation(q1, qM2, Tm)..., linear_interpolation(qM2, qT, Tm)...]
 x_ref = [[q_ref[t]; q_ref[t+1]] for t = 1:T]
 x1 = x_ref[1]
 xM = x_ref[Tm]
@@ -80,8 +80,8 @@ for t = 1:T
         function objT(x, u, w)
             J = 0.0
             v = (x[model.nq .+ (1:model.nq)] - x[1:model.nq]) ./ h
-            J += 0.5 * 1.0e-1 * dot(v, v)
-            J += 100 * transpose(x[1:nx] - x_ref[t]) * Diagonal(1000.0 * ones(nx)) * (x[1:nx] - x_ref[t])
+            J += 0.5 * 1.0e-3 * dot(v, v)
+            J += transpose(x[1:nx] - x_ref[t]) * Diagonal(1000.0 * ones(nx)) * (x[1:nx] - x_ref[t])
             return J
         end
         push!(obj, DTO.Cost(objT, nx + nθ + nx + model.nu, 0))
@@ -90,9 +90,9 @@ for t = 1:T
             J = 0.0
             v = (x[model.nq .+ (1:model.nq)] - x[1:model.nq]) ./ h
             J += 0.5 * 1.0e-3 * dot(v, v)
-            J += 100 * transpose(x[1:nx] - x_ref[t]) * Diagonal(1000.0 * ones(nx)) * (x[1:nx] - x_ref[t])
+            J += transpose(x[1:nx] - x_ref[t]) * Diagonal(1000.0 * ones(nx)) * (x[1:nx] - x_ref[t])
             J += 0.5 * transpose(u[1:model.nu]) * Diagonal(1.0e-3 * ones(model.nu)) * u[1:model.nu]
-            J += 1000.0 * u[end] # slack
+            J += 10000.0 * u[end] # slack
             return J
         end
         push!(obj, DTO.Cost(obj1, nx, nu))
@@ -101,13 +101,13 @@ for t = 1:T
             J = 0.0
             v = (x[model.nq .+ (1:model.nq)] - x[1:model.nq]) ./ h
             J += 0.5 * 1.0e-3 * dot(v, v)
-            u_previous = x[nx + 5 + nx .+ (1:model.nu)]
-            u_control = u[1:model.nu]
-            w = (u_control - u_previous) ./ h
-            J += 0.5 * 1.0e-2 * dot(w, w)
-            J += 100 * transpose(x[1:nx] - x_ref[t]) * Diagonal(1000.0 * ones(nx)) * (x[1:nx] - x_ref[t])
+            # u_previous = x[nx + 5 + nx .+ (1:model.nu)]
+            # u_control = u[1:model.nu]
+            # w = (u_control - u_previous) ./ h
+            # J += 0.5 * 1.0e-2 * dot(w, w)
+            J += 100.0 * transpose(x[1:nx] - x_ref[t]) * Diagonal(1000.0 * ones(nx)) * (x[1:nx] - x_ref[t])
             J += 0.5 * transpose(u[1:model.nu]) * Diagonal(1.0e-3 * ones(model.nu)) * u[1:model.nu]
-            J += 1000.0 * u[end] # slack
+            J += 10000.0 * u[end] # slack
             return J
         end
         push!(obj, DTO.Cost(objt, nx + nθ + nx + model.nu, nu))
@@ -122,8 +122,8 @@ xlt = [-Inf * ones(nx); -Inf * ones(nθ); -Inf * ones(nx); -Inf * ones(model.nu)
 xut = [Inf * ones(nx); Inf * ones(nθ); Inf * ones(nx); Inf * ones(model.nu)]
 
 # final condition
-xlT = [qT; qT; -Inf * ones(nθ); -Inf * ones(nx); -Inf * ones(model.nu)]
-xuT = [qT; qT; Inf * ones(nθ); Inf * ones(nx); Inf * ones(model.nu)]
+xlT = [q_ref[end-1]; q_ref[end]; -Inf * ones(nθ); -Inf * ones(nx); -Inf * ones(model.nu)]
+xuT = [q_ref[end-1]; q_ref[end]; Inf * ones(nθ); Inf * ones(nx); Inf * ones(model.nu)]
 
 ul = [-Inf * ones(model.nu); zeros(nu - model.nu)]
 uu = [Inf * ones(model.nu); Inf * ones(nu - model.nu)]
@@ -131,7 +131,17 @@ uu = [Inf * ones(model.nu); Inf * ones(nu - model.nu)]
 bnd1 = DTO.Bound(nx, nu, xl=xl1, xu=xu1, ul=ul, uu=uu)
 bndt = DTO.Bound(nx + nθ + nx + model.nu, nu, xl=xlt, xu=xut, ul=ul, uu=uu)
 bndT = DTO.Bound(nx + nθ + nx + model.nu, 0, xl=xlT, xu=xuT)
-bnds = [bnd1, [bndt for t = 2:T-1]..., bndT];
+bnds = [bnd1, [bndt for t = 2:T-1]..., bndT]
+
+# bnds = Bound{Float64}[]
+# push!(bnds, DTO.Bound(nx, nu, xl=xl1, xu=xu1, ul=ul, uu=uu))
+# for t = 2:T-1 
+#     push!(bnds, DTO.Bound(nx + nθ + nx + model.nu, nu, 
+#         xl=[-Inf * ones(nq); q_ref[t+1]; -Inf * ones(nθ); -Inf * ones(nx); -Inf * ones(model.nu)], 
+#         xu=[Inf * ones(nq); q_ref[t+1]; Inf * ones(nθ); Inf * ones(nx); Inf * ones(model.nu)], 
+#         ul=ul, uu=uu))
+# end
+# push!(bnds, DTO.Bound(nx + nθ + nx + model.nu, 0, xl=xlT, xu=xuT))
 
 cons = DTO.Constraint{Float64}[]
 for t = 1:T
@@ -208,7 +218,7 @@ sum([u[end] for u in u_sol[1:end-1]])
 # ## visualize
 vis = Visualizer()
 render(vis)
-visualize!(vis, model, x_sol, Δt=h);
+visualize!(vis, model, [x_sol[1][1:nq], [x[nq .+ (1:nq)] for x in x_sol]...], Δt=h);
 
 q_opt = [x_sol[1][1:model.nq], [x[model.nq .+ (1:model.nq)] for x in x_sol]...]
 v_opt = [(x[model.nq .+ (1:model.nq)] - x[0 .+ (1:model.nq)]) ./ h for x in x_sol]
@@ -234,6 +244,9 @@ bm = copy(b_opt)
 
 hm = h
 timesteps = range(0.0, stop=(h * (length(qm) - 2)), length=(length(qm) - 2))
+plot(hcat(q_ref...)', labels="")
+plot(hcat(qm...)', labels="")
+
 plot(timesteps, hcat(qm[2:end-1]...)', labels="")
 plot(timesteps, hcat(um...)', labels="")
 plot(timesteps, hcat(γm...)', labels="")
