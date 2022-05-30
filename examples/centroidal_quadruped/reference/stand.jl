@@ -143,7 +143,7 @@ conT = DTO.Constraint(constraints_T, nx + nθ + nx, nu, idx_ineq=collect(0 .+ (1
 cons = [con1, [cont for t = 2:T-1]..., conT];
 
 # ## problem
-solver = DTO.solver(dyn, obj, cons, bnds,
+dto_solver = DTO.solver(dyn, obj, cons, bnds,
     options=DTO.Options(
         tol=1.0e-3,
         constr_viol_tol=1.0e-3,
@@ -152,14 +152,14 @@ solver = DTO.solver(dyn, obj, cons, bnds,
 # ## initialize
 x_interpolation = [x1, [[x1; zeros(nθ); zeros(nx)] for t = 2:T]...]
 u_guess = [1.0e-4 * rand(nu) for t = 1:T-1] # may need to run more than once to get good trajectory
-DTO.initialize_states!(solver, x_interpolation)
-DTO.initialize_controls!(solver, u_guess)
+DTO.initialize_states!(dto_solver, x_interpolation)
+DTO.initialize_controls!(dto_solver, u_guess)
 
 # ## solve
-@time DTO.solve!(solver)
+@time DTO.solve!(dto_solver)
 
 # ## solution
-x_sol, u_sol = DTO.get_trajectory(solver)
+x_sol, u_sol = DTO.get_trajectory(dto_solver)
 @show x_sol[1]
 @show x_sol[T]
 maximum([u[nu] for u in u_sol[1:end-1]])

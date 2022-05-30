@@ -72,6 +72,7 @@ p = ci_mpc_policy(ref_traj, s, obj,
 
 # ## Disturbances
 w = [[0.0,0.0,0.0] for i=1:H_sim/N_sample]
+w[10] = [10.0 * h, 0.0, 0.0]
 d = open_loop_disturbances(w, N_sample)
 
 # ## Initial conditions

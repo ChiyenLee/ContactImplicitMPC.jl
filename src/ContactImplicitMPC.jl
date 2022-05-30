@@ -2,23 +2,17 @@ module ContactImplicitMPC
 
 using BenchmarkTools
 using Colors
+# using MeshCat
 using CoordinateTransformations
-using FFMPEG
 using FileIO
 using ForwardDiff
-using GeometryBasics
 using IfElse
 using InteractiveUtils
 using JLD2
 using LinearAlgebra
 using Logging
 using QDLDL
-using MeshCat
-using MeshCatMechanisms
-using Meshing
-using MeshIO
 using Parameters
-using Plots
 using Random
 using Rotations
 using SparseArrays
@@ -72,7 +66,7 @@ include("dynamics/flamingo/model.jl")
 include("dynamics/pushbot/model.jl")
 include("dynamics/walledcartpole/model.jl")
 include("dynamics/centroidal_quadruped/model.jl")
-include("dynamics/point_foot_quadruped/model.jl")
+# include("dynamics/point_foot_quadruped/model.jl")
 
 # Simulator
 include("simulator/policy.jl")
@@ -106,20 +100,20 @@ include("controller/policy.jl")
 include("controller/newton_structure_solver/methods.jl")
 
 # Visuals
-include("dynamics/visuals.jl")
-include("dynamics/visual_utils.jl")
-include("visuals.jl")
+# include("dynamics/visuals.jl")
+# include("dynamics/visual_utils.jl")
+# include("visuals.jl")
 
-include("dynamics/particle_2D/visuals.jl")
-include("dynamics/particle/visuals.jl")
-include("dynamics/hopper_2D/visuals.jl")
-include("dynamics/hopper_3D/visuals.jl")
-include("dynamics/quadruped/visuals.jl")
-include("dynamics/flamingo/visuals.jl")
-include("dynamics/pushbot/visuals.jl")
-include("dynamics/walledcartpole/visuals.jl")
-include("dynamics/centroidal_quadruped/visuals.jl")
-include("dynamics/point_foot_quadruped/visuals.jl")
+# include("dynamics/particle_2D/visuals.jl")
+# include("dynamics/particle/visuals.jl")
+# include("dynamics/hopper_2D/visuals.jl")
+# include("dynamics/hopper_3D/visuals.jl")
+# include("dynamics/quadruped/visuals.jl")
+# include("dynamics/flamingo/visuals.jl")
+# include("dynamics/pushbot/visuals.jl")
+# include("dynamics/walledcartpole/visuals.jl")
+# include("dynamics/centroidal_quadruped/visuals.jl")
+# include("dynamics/point_foot_quadruped/visuals.jl")
 
 export
     initial_conditions,
@@ -244,11 +238,11 @@ export
     index_equr,
     index_ortr,
     index_socr,
-    visualize_meshrobot!,
-    visualize_robot!,
-    visualize_force!,
-    visualize_disturbance!,
-    visualize_payload!,
+    # visualize_meshrobot!,
+    # visualize_robot!,
+    # visualize_force!,
+    # visualize_disturbance!,
+    # visualize_payload!,
     process!,
     contact_trajectory,
     pack_z,
@@ -282,8 +276,8 @@ export
     slope_smooth_2D_lc,
     flat_2D_lc,
     flat_3D_lc,
-    plot_surface!,
-    stairs!,
+    # plot_surface!,
+    # stairs!,
     Simulator,
     set_trajectory!,
     initialize_z!
