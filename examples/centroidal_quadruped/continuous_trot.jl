@@ -11,12 +11,13 @@ using BenchmarkTools
 
 # ## Visualizer
 vis = ContactImplicitMPC.Visualizer()
-ContactImplicitMPC.render(vis)
+ContactImplicitMPC.open(vis)
 
 @show Threads.nthreads()
 
 # include("continuous_policy.jl")
-include("continuous_policy_v2.jl")
+# include("continuous_policy_v2.jl")
+include("continuous_policy_gains.jl")
 
 # ## Simulation
 s = get_simulation("centroidal_quadruped", "flat_3D_lc", "flat")
@@ -26,7 +27,7 @@ env = s.env
 
 # ## Reference Trajectory
 ref_traj = deepcopy(get_trajectory(s.model, s.env,
-	joinpath(@__DIR__, "reference/inplace_trot_v6.jld2"),
+	joinpath(@__DIR__, "reference/inplace_trot_v7.jld2"),
     load_type = :split_traj_alt));
 
 
@@ -35,23 +36,25 @@ h = ref_traj.h
 
 # ## MPC setup
 N_sample = 5
-H_mpc = 7
+H_mpc = 20
 h_sim = h / N_sample
-H_sim = 500
-κ_mpc = 2.0e-4
+H_sim = 1000
+κ_mpc = 1.0e-3
 
-v0 = 0.1
+v0 = 0.0
+function get_stride(model::CentroidalQuadruped, traj::ContactTraj; v0=0.2*v0)
+	stride = zeros(model.nq)
+	stride[[1,7,10,13,16]] .+= 1.0 * v0 * traj.h * traj.H
+	stride[1] = 1.0 * v0 * traj.h * traj.H
+	return stride
+end
 obj = TrackingVelocityObjective(model, env, H_mpc,
-    v = [Diagonal(1.0e-1 * [[5,10,1000]; 1000 *[10,10,10]; fill(1.0 * [1,1,1], 4)...]) for t = 1:H_mpc],
-	q = [relative_state_cost(1e-3*[1e-2,100,1e3 * 100], 1.0 *[10,10,10], 10e-0*[1.0,1.0,10]) for t = 1:H_mpc],
-	u = [Diagonal(1.0e-2 * vcat(fill([1.0, 1.0, 1.0], 4)...)) for t = 1:H_mpc],
-	v_target = [1/ref_traj.h * [v0;0;0; 0;0;0; v0;0;0; v0;0;0; v0;0;0; v0;0;0] for t = 1:H_mpc],)
-
-# obj = TrackingVelocityObjective(model, env, H_mpc,
-#     v = h / H_mpc * [Diagonal([[1,1,1]; 1e2*[1,1,1]; 1e-1*fill([1,1,1], 4)...]) for t = 1:H_mpc],
-# 	q = h / H_mpc * [relative_state_cost([1,1,1], [1,1,1], [1,1,1]) for t = 1:H_mpc],
-# 	u = h / H_mpc * [Diagonal(vcat(fill([1,1,1], 4)...)) for t = 1:H_mpc],
-# 	v_target = [1/ref_traj.h * [v0;0;0; 0;0;0; v0;0;0; v0;0;0; v0;0;0; v0;0;0] for t = 1:H_mpc],)
+    # v = [Diagonal(1e-3 * [[1,1,1]; 1e+3*[1,1,1]; fill([1,1,1], 4)...]) for t = 1:H_mpc],
+	v = [relative_state_cost(2e+1*[1,1,1], 1e+3*[1,1,1], 1e0*[1,1,1]) for t = 1:H_mpc],
+	q = [relative_state_cost(1e-0*[1e-1,1e-1,1], 3e-1*[1,1,1], 1e+0*[0.2,0.2,1]) for t = 1:H_mpc],
+	u = [Diagonal(3e-3 * vcat(fill([1,1,1], 4)...)) for t = 1:H_mpc],
+	v_target = [ref_traj.h * [v0;0;0; 0;0;0; v0;0;0; v0;0;0; v0;0;0; v0;0;0] for t = 1:H_mpc],
+	)
 
 p = ci_mpc_policy(ref_traj, s, obj,
     H_mpc = H_mpc,
@@ -77,7 +80,7 @@ p = ci_mpc_policy(ref_traj, s, obj,
 		));
 
 # ## Disturbances
-w = [[0.0,0.0,0.0] for i=1:H_sim/N_sample]
+w = [ref_traj.h * [30; 30; -100.0] for i=1:H_sim/N_sample]
 d = open_loop_disturbances(w, N_sample)
 
 # ## Initial conditions
@@ -104,8 +107,6 @@ plot(sim.stats.policy_time, xlabel="timestep", ylabel="mpc time (s)",
 	ylims=[-0.001, 0.1],
 	label="", linetype=:steppost)
 
-sim
-sim.traj
 
 plt = plot()
 plot!(plt, hcat(Vector.([(sim.traj.q[i+1][1:1] - sim.traj.q[i][1:1]) / sim.h for i=1:H_sim])...)')
