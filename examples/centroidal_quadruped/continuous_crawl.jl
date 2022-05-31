@@ -11,12 +11,14 @@ using BenchmarkTools
 
 # ## Visualizer
 vis = ContactImplicitMPC.Visualizer()
-ContactImplicitMPC.render(vis)
+ContactImplicitMPC.open(vis)
 
 @show Threads.nthreads()
 
 # include("continuous_policy.jl")
+# include("continuous_policy_v2.jl")
 include("continuous_policy_v3.jl")
+# include("continuous_policy_gains.jl")
 
 # ## Simulation
 s = get_simulation("centroidal_quadruped", "flat_3D_lc", "flat")
@@ -26,7 +28,7 @@ env = s.env
 
 # ## Reference Trajectory
 ref_traj = deepcopy(get_trajectory(s.model, s.env,
-	joinpath(@__DIR__, "reference/inplace_trot_v7.jld2"),
+	joinpath(@__DIR__, "reference/inplace_crawl_v10.jld2"),
     load_type = :split_traj_alt));
 
 
@@ -35,23 +37,25 @@ h = ref_traj.h
 
 # ## MPC setup
 N_sample = 5
-H_mpc = 20
+H_mpc = 5
 h_sim = h / N_sample
-H_sim = 3000
-κ_mpc = 1.0e-4
+H_sim = 200
+κ_mpc = 1.0e-3
 
-v0 = -0.0
+v0 = 0.00
+function get_stride(model::CentroidalQuadruped, traj::ContactTraj; v0=0.2*v0)
+	stride = zeros(model.nq)
+	stride[[1,7,10,13,16]] .+= 1.0 * v0 * traj.h * traj.H
+	stride[1] = 1.0 * v0 * traj.h * traj.H
+	return stride
+end
 obj = TrackingVelocityObjective(model, env, H_mpc,
-    v = [Diagonal(1e-3 * [[1,1,1]; 1e+3*[1,1,1]; fill([1,1,1], 4)...]) for t = 1:H_mpc],
-	q = [relative_state_cost(1e-0*[0.0,1,1], 3e-1*[1,1,1], 1e-0*[0.2,0.2,1]) for t = 1:H_mpc],
-	u = [Diagonal(3e-3 * vcat(fill([1,1,1], 4)...)) for t = 1:H_mpc],
-	v_target = [1/ref_traj.h * [v0;0;0; 0;0;0; v0;0;0; v0;0;0; v0;0;0; v0;0;0] for t = 1:H_mpc],)
-
-# obj = TrackingVelocityObjective(model, env, H_mpc,
-#     v = h / H_mpc * [Diagonal([[1,1,1]; [1,1,1]; fill([1,1,1], 4)...]) for t = 1:H_mpc],
-# 	q = h / H_mpc * [relative_state_cost([1,1,1], [1,1,1], [1,1,1]) for t = 1:H_mpc],
-# 	u = h / H_mpc * [Diagonal(vcat(fill([1,1,1], 4)...)) for t = 1:H_mpc],
-# 	v_target = h / H_mpc * [1/ref_traj.h * [v0;0;0; 0;0;0; v0;0;0; v0;0;0; v0;0;0; v0;0;0] for t = 1:H_mpc],)
+    # v = [Diagonal(1e-3 * [[1,1,1]; 1e+3*[1,1,1]; fill([1,1,1], 4)...]) for t = 1:H_mpc],
+	v = [Diagonal([2e+1*[1,1,1]; 1e+3*[1,1,1]; fill(1e0*[1,1,1], 4)...]) for t = 1:H_mpc],
+	q = [Diagonal([1e-0*[1e-1,1e-1,1]; 3e-0*[1,1,1]; fill(1e+0*[0.2,0.2,30], 4)...]) for t = 1:H_mpc],
+	u = [Diagonal(1e-4 * vcat(fill([1,1,0.1], 4)...)) for t = 1:H_mpc],
+	v_target = [ref_traj.h * [v0;0;0; 0;0;0; v0;0;0; v0;0;0; v0;0;0; v0;0;0] for t = 1:H_mpc],
+	)
 
 p = ci_mpc_policy(ref_traj, s, obj,
     H_mpc = H_mpc,
@@ -66,19 +70,18 @@ p = ci_mpc_policy(ref_traj, s, obj,
 					solver = :empty_solver,
 					max_time = 1e5),
     n_opts = NewtonOptions(
-        r_tol = 3e-5,
-        max_time=1.0e-1,
+        r_tol = 3e-6,
+        max_time=1e-1,
 		solver=:ldl_solver,
         threads=false,
         verbose=false,
         max_iter = 5),
     mpc_opts = CIMPCOptions(
 		# live_plotting=true
-		gains=true,
 		));
 
 # ## Disturbances
-w = [1.0 * [0.0, i == 100 ? 5.0 : 0.0, i == 10 ? 1.0 : 0.0] for i=1:H_sim/N_sample]
+w = [ref_traj.h * [00; 00; -00.0] for i=1:H_sim/N_sample]
 d = open_loop_disturbances(w, N_sample)
 
 # ## Initial conditions
@@ -95,6 +98,7 @@ RoboDojo.simulate!(sim, q1_sim0, v1_sim)
 set_light!(vis)
 set_floor!(vis, grid=true)
 set_background!(vis)
+# anim = visualize!(vis, model, ref_traj.q; Δt=h)
 anim = visualize!(vis, model, sim.traj.q; Δt=h_sim)
 
 # # ## Timing result
