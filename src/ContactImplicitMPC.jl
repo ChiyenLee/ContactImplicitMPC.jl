@@ -2,7 +2,9 @@ module ContactImplicitMPC
 
 using BenchmarkTools
 using Colors
-# using MeshCat
+using MeshCat
+using MeshCatMechanisms
+using Plots
 using CoordinateTransformations
 using FileIO
 using ForwardDiff
@@ -23,6 +25,7 @@ using Scratch
 import Scratch: get_scratch!
 using Test
 using RoboDojo
+using GeometryBasics
 import RoboDojo: LinearSolver, LUSolver, Model, ResidualMethods, Space, Disturbances, IndicesZ, InteriorPoint, EmptySolver, Policy, Trajectory, GradientTrajectory, InteriorPointOptions, IndicesOptimization, interior_point, interior_point_solve!, bilinear_violation, residual_violation, general_correction_term!, r!, rz!, rθ!, linear_solve!, lu_solver, empty_policy, empty_disturbances, friction_coefficients, SimulatorStatistics, SimulatorOptions, indices_θ, num_data, initialize_z!, initialize_θ!, indices_z, indices_θ, simulate!, policy, process!, Simulator
 using DirectTrajectoryOptimization
 
@@ -101,9 +104,9 @@ include("controller/newton_structure_solver/methods.jl")
 include("controller/gains.jl")
 
 # Visuals
-# include("dynamics/visuals.jl")
-# include("dynamics/visual_utils.jl")
-# include("visuals.jl")
+include("dynamics/visuals.jl")
+include("dynamics/visual_utils.jl")
+include("visuals.jl")
 
 # include("dynamics/particle_2D/visuals.jl")
 # include("dynamics/particle/visuals.jl")
@@ -113,7 +116,7 @@ include("controller/gains.jl")
 # include("dynamics/flamingo/visuals.jl")
 # include("dynamics/pushbot/visuals.jl")
 # include("dynamics/walledcartpole/visuals.jl")
-# include("dynamics/centroidal_quadruped/visuals.jl")
+include("dynamics/centroidal_quadruped/visuals.jl")
 # include("dynamics/point_foot_quadruped/visuals.jl")
 
 export

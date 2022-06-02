@@ -1,7 +1,6 @@
 # ## model
 include("trajopt_model_v2.jl")
 include(joinpath(@__DIR__, "..", "..", "..", "src/dynamics/centroidal_quadruped/visuals.jl"))
-
 vis = Visualizer()
 open(vis)
 
