@@ -7,8 +7,8 @@ include("trajopt_model_v2.jl")
 
 # ## horizon
 h = 0.05
-T = 90
-Tm = 10 # mid point for a swing / stance change
+T = 135
+Tm = 15 # mid point for a swing / stance change
 
 # ## centroidal_quadruped
 s = get_simulation("centroidal_quadruped", "flat_3D_lc", "flat")
@@ -57,35 +57,35 @@ qT = copy(q1)
 
 visualize!(vis, model, [qM2], Δt=h);
 
-h_step = 0.10
+h_step = 0.20
 qM0 = deepcopy(q1)
 qM0[0 .+ (1:3)] += [-0.02, 0.0, 0.0] # body
 
 qM1 = deepcopy(q1)
-qM1[6 .+ (1:3)] += [+0.04, 0.0, 2h_step] # front left
+qM1[6 .+ (1:3)] += [+0.06, 0.0, 2h_step] # front left
 qM1[0 .+ (1:3)] += [-0.04, 0.0, 0.0] # body
 
 qM2 = deepcopy(q1)
-qM2[6 .+ (1:3)] += [+0.12, 0.0, h_step] # front left
+qM2[6 .+ (1:3)] += [+0.16, 0.0, h_step] # front left
 qM2[0 .+ (1:3)] += [-0.04, 0.0, 0.0] # body
 
 qM3 = deepcopy(q1)
-qM3[6 .+ (1:3)] += [+0.12, 0.0, h_step] # front left
+qM3[6 .+ (1:3)] += [+0.16, 0.0, h_step] # front left
 qM3[0 .+ (1:3)] += [+0.00, 0.0, 0.0] # body
 
 qM4 = deepcopy(q1)
-qM4[6 .+ (1:3)] += [0.12, 0.0, h_step] # front left
+qM4[6 .+ (1:3)] += [0.16, 0.0, h_step] # front left
 qM4[9 .+ (1:3)] += [0.08, 0.0, 2h_step] # front left
 qM4[0 .+ (1:3)] += [0.00, 0.0, 0.0] # body
 
 qM5 = deepcopy(q1)
-qM5[6 .+ (1:3)] += [0.12, 0.0, h_step] # front left
-qM5[9 .+ (1:3)] += [0.12, 0.0, h_step] # front left
+qM5[6 .+ (1:3)] += [0.16, 0.0, h_step] # front left
+qM5[9 .+ (1:3)] += [0.16, 0.0, h_step] # front left
 qM5[0 .+ (1:3)] += [0.00, 0.0, 0.0] # body
 
 qT = deepcopy(q1)
-qT[6 .+ (1:3)] += [0.12, 0.0, h_step] # front left
-qT[9 .+ (1:3)] += [0.12, 0.0, h_step] # front left
+qT[6 .+ (1:3)] += [0.16, 0.0, h_step] # front left
+qT[9 .+ (1:3)] += [0.16, 0.0, h_step] # front left
 qT[0 .+ (1:3)] += [0.08, 0.0, 0.0] # body
 
 set_robot!(vis, model, q1)
@@ -245,7 +245,7 @@ end
 tolerance = 1.0e-3
 p = DTO.solver(dyn, obj, cons, bnds,
     options=DTO.Options(
-        max_iter=1000,
+        max_iter=500,
         max_cpu_time=30000.0,
         tol=tolerance,
         constr_viol_tol=tolerance,
@@ -292,15 +292,15 @@ bm_ = copy(b_opt)
 μm = model.μ_world
 
 hm = h
-timesteps = range(0.0, stop=(h * (length(qm) - 2)), length=(length(qm) - 2))
-plot(hcat(qm...)', labels="")
+timesteps = range(0.0, stop=(h * (length(qm_) - 2)), length=(length(qm_) - 2))
+plot(hcat(qm_...)', labels="")
 
-plot(timesteps, hcat(qm[2:end-1]...)', labels="")
-plot(timesteps, hcat(um...)', labels="")
-plot(timesteps, hcat(γm...)', labels="")
-plot(timesteps, hcat(bm...)', labels="")
-plot(timesteps, hcat(ψm...)', labels="")
-plot(timesteps, hcat(ηm...)', labels="")
+plot(timesteps, hcat(qm_[2:end-1]...)', labels="")
+plot(timesteps, hcat(um_...)', labels="")
+plot(timesteps, hcat(γm_...)', labels="")
+plot(timesteps, hcat(bm_...)', labels="")
+plot(timesteps, hcat(ψm_...)', labels="")
+plot(timesteps, hcat(ηm_...)', labels="")
 
 ################################################################################
 # Trajectory Extension
@@ -312,6 +312,7 @@ bm = [bm_; [bm_[end] for i=1:50]]
 ψm = [ψm_; [ψm_[end] for i=1:50]]
 ηm = [ηm_; [ηm_[end] for i=1:50]]
 
+
 using JLD2
-@save joinpath(@__DIR__, "step_over_box.jld2") qm um γm bm ψm ηm μm hm
-@load joinpath(@__DIR__, "step_over_box.jld2") qm um γm bm ψm ηm μm hm
+@save joinpath(@__DIR__, "step_over_box_v3.jld2") qm um γm bm ψm ηm μm hm
+@load joinpath(@__DIR__, "step_over_box_v3.jld2") qm um γm bm ψm ηm μm hm
