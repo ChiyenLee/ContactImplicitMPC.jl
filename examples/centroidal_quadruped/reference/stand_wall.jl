@@ -1,4 +1,5 @@
 # ## model
+using ContactImplicitMPC
 include("trajopt_model_wall_4feet.jl")
 include(joinpath(@__DIR__, "..", "..", "..", "src/dynamics/centroidal_quadruped_wall/visuals.jl"))
 

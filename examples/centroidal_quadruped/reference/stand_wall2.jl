@@ -1,7 +1,7 @@
 # ## model
 include("trajopt_model_wall.jl")
 include(joinpath(@__DIR__, "..", "..", "..", "src/dynamics/centroidal_quadruped_wall/visuals.jl"))
-
+using ContactImplicitMPC
 vis = Visualizer()
 open(vis)
 
